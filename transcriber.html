@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Транскрибер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0b0f14;
+  --surface: #141a22;
+  --surface2: #1a222d;
+  --border: #252e3b;
+  --text: #e2e8f0;
+  --text-dim: #8494a7;
+  --accent: #2dd4a8;
+  --accent2: #14b8a6;
+  --accent-dim: rgba(45, 212, 168, 0.12);
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Outfit', system-ui, sans-serif;
+  --radius: 10px;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+  line-height: 1.5;
+}
+
+.container {
+  width: 100%;
+  max-width: 640px;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.section {
+  margin-top: 28px;
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.api-row {
+  display: flex;
+  gap: 8px;
+}
+
+.api-row input {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.api-row input:focus {
+  border-color: var(--accent);
+}
+
+.btn-save {
+  padding: 10px 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-save:hover { background: var(--border); }
+.btn-save.saved { border-color: var(--accent); color: var(--accent); }
+
+.settings-row {
+  display: flex;
+  gap: 12px;
+}
+
+.settings-row .field {
+  flex: 1;
+}
+
+.settings-row select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238494a7' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.settings-row select:focus { border-color: var(--accent); }
+
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+}
+
+.dropzone:hover, .dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.dropzone-icon {
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+
+.dropzone-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.dropzone-hint {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  margin-top: 8px;
+}
+
+.dropzone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-info {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 12px;
+}
+
+.file-info.visible { display: flex; }
+
+.file-icon { font-size: 1.5rem; }
+
+.file-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-family: var(--mono);
+}
+
+.file-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.file-remove:hover { color: var(--error); background: var(--error-bg); }
+
+.btn-transcribe {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0b0f14;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn-transcribe:hover:not(:disabled) { opacity: 0.9; }
+.btn-transcribe:active:not(:disabled) { transform: scale(0.99); }
+.btn-transcribe:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.warning {
+  display: none;
+  padding: 10px 14px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: var(--radius);
+  color: #eab308;
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+}
+
+.warning.visible { display: block; }
+
+.error {
+  display: none;
+  padding: 10px 14px;
+  background: var(--error-bg);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius);
+  color: #f87171;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.error.visible { display: block; }
+
+.progress-area {
+  display: none;
+  margin-top: 20px;
+}
+
+.progress-area.visible { display: block; }
+
+.progress-status {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.progress-bar-track {
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-fill.indeterminate {
+  width: 40%;
+  animation: indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.result-area {
+  display: none;
+  margin-top: 28px;
+}
+
+.result-area.visible { display: block; }
+
+.result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.result-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-action {
+  padding: 6px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-action:hover { background: var(--border); }
+.btn-action.copied { border-color: var(--accent); color: var(--accent); }
+
+.result-text {
+  width: 100%;
+  min-height: 120px;
+  max-height: 400px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  resize: vertical;
+  overflow-y: auto;
+  outline: none;
+}
+
+.result-text:focus { border-color: var(--accent); }
+
+.result-meta {
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.footer a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.footer a:hover { opacity: 0.7; }
+
+@media (max-width: 480px) {
+  body { padding: 24px 12px; }
+  h1 { font-size: 1.4rem; }
+  .settings-row { flex-direction: column; gap: 12px; }
+  .dropzone { padding: 32px 16px; }
+  .result-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Транскрибер</h1>
+    <p class="subtitle">Транскрипция аудио и видео через Deepgram</p>
+  </header>
+
+  <div class="section">
+    <label>API ключ Deepgram</label>
+    <div class="api-row">
+      <input type="password" id="apiKey" placeholder="dg_xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      <button class="btn-save" id="btnSave" onclick="saveApiKey()">Сохранить</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <label>Настройки</label>
+    <div class="settings-row">
+      <div class="field">
+        <select id="lang">
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+          <option value="auto">Авто</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+        </select>
+      </div>
+      <div class="field">
+        <select id="model">
+          <option value="nova-3">Nova-3</option>
+          <option value="nova-2">Nova-2</option>
+          <option value="whisper">Whisper</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.ogg,.flac,.aac,.m4a,.mp4,.webm,.mkv,.avi,.mov,.wmv,.flv,.m4v,.ts,.mts,.opus,.wma">
+      <div class="dropzone-icon">&#x1F4C1;</div>
+      <div class="dropzone-text">Перетащи файл или нажми для выбора</div>
+      <div class="dropzone-hint">mp3, wav, ogg, flac, aac, m4a, mp4, webm, mkv, avi, mov</div>
+    </div>
+    <div class="file-info" id="fileInfo">
+      <span class="file-icon" id="fileIcon"></span>
+      <div class="file-details">
+        <div class="file-name" id="fileName"></div>
+        <div class="file-size" id="fileSize"></div>
+      </div>
+      <button class="file-remove" onclick="clearFile()" title="Убрать">&times;</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="warning" id="warning"></div>
+    <div class="error" id="errorBox"></div>
+    <button class="btn-transcribe" id="btnTranscribe" disabled onclick="startTranscription()">Транскрибировать</button>
+  </div>
+
+  <div class="progress-area" id="progressArea">
+    <div class="progress-status" id="progressStatus"></div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+  </div>
+
+  <div class="result-area" id="resultArea">
+    <div class="result-header">
+      <div class="result-title">Результат</div>
+      <div class="result-actions">
+        <button class="btn-action" id="btnCopy" onclick="copyResult()">Копировать</button>
+        <button class="btn-action" onclick="downloadResult()">Скачать .txt</button>
+      </div>
+    </div>
+    <textarea class="result-text" id="resultText" readonly></textarea>
+    <div class="result-meta" id="resultMeta"></div>
+  </div>
+
+  <footer class="footer">
+    <span>PRIZRAKJJ</span>
+    <a href="https://t.me/SafeVibeCode" target="_blank" rel="noopener">t.me/SafeVibeCode</a>
+  </footer>
+</div>
+
+<script>
+const SERVER = location.origin; // http://localhost:8765
+
+let selectedFile = null;
+let resultTranscript = '';
+let originalFileName = '';
+let isProcessing = false;
+let currentXHR = null;
+
+// --- Init ---
+(function() {
+  const saved = localStorage.getItem('dg_api_key');
+  if (saved) {
+    document.getElementById('apiKey').value = saved;
+    showSaved();
+  }
+  updateButton();
+})();
+
+// --- API Key ---
+function saveApiKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (key) {
+    localStorage.setItem('dg_api_key', key);
+    showSaved();
+  }
+  updateButton();
+}
+
+function showSaved() {
+  const btn = document.getElementById('btnSave');
+  btn.textContent = '✓';
+  btn.classList.add('saved');
+  setTimeout(() => {
+    btn.textContent = 'Сохранить';
+    btn.classList.remove('saved');
+  }, 2000);
+}
+
+// --- Drag & Drop ---
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropzone.classList.add('dragover');
+});
+
+dropzone.addEventListener('dragleave', () => {
+  dropzone.classList.remove('dragover');
+});
+
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  if (!isAudioFile(file) && !isVideoFile(file)) {
+    showError('Формат файла не поддерживается');
+    return;
+  }
+  selectedFile = file;
+  originalFileName = file.name;
+
+  document.getElementById('fileIcon').textContent = isVideoFile(file) ? '🎬' : '🎵';
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = formatSize(file.size);
+  document.getElementById('fileInfo').classList.add('visible');
+
+  const warning = document.getElementById('warning');
+  if (file.size > 500 * 1024 * 1024) {
+    warning.textContent = 'Большой файл — извлечение аудио может занять время';
+    warning.classList.add('visible');
+  } else {
+    warning.classList.remove('visible');
+  }
+
+  hideError();
+  updateButton();
+}
+
+function clearFile() {
+  selectedFile = null;
+  originalFileName = '';
+  fileInput.value = '';
+  document.getElementById('fileInfo').classList.remove('visible');
+  document.getElementById('warning').classList.remove('visible');
+  updateButton();
+}
+
+// --- Utils ---
+function isVideoFile(file) {
+  return file.type.startsWith('video/') ||
+    /\.(mp4|webm|mkv|avi|mov|wmv|flv|m4v|ts|mts)$/i.test(file.name);
+}
+
+function isAudioFile(file) {
+  return file.type.startsWith('audio/') ||
+    /\.(mp3|wav|ogg|flac|aac|wma|m4a|opus|webm)$/i.test(file.name);
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+}
+
+function getExtension(name) {
+  const m = name.match(/(\.[^.]+)$/);
+  return m ? m[1] : '';
+}
+
+function updateButton() {
+  const key = document.getElementById('apiKey').value.trim();
+  document.getElementById('btnTranscribe').disabled = !key || !selectedFile || isProcessing;
+}
+
+// --- Error / Progress ---
+function showError(msg) {
+  const el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('errorBox').classList.remove('visible');
+}
+
+function showProgress(text, percent) {
+  const area = document.getElementById('progressArea');
+  const status = document.getElementById('progressStatus');
+  const bar = document.getElementById('progressBar');
+  area.classList.add('visible');
+  status.textContent = text;
+  if (percent === null) {
+    bar.style.width = '';
+    bar.classList.add('indeterminate');
+  } else {
+    bar.classList.remove('indeterminate');
+    bar.style.width = Math.round(percent * 100) + '%';
+  }
+}
+
+function hideProgress() {
+  document.getElementById('progressArea').classList.remove('visible');
+  const bar = document.getElementById('progressBar');
+  bar.classList.remove('indeterminate');
+  bar.style.width = '0%';
+}
+
+// --- Извлечение аудио через локальный сервер (ffmpeg) ---
+function extractAudioViaServer(file) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    // Прогресс отправки видео на сервер
+    xhr.upload.addEventListener('progress', e => {
+      if (e.lengthComputable) {
+        const pct = e.loaded / e.total;
+        showProgress(
+          `[1/3] Отправка видео на обработку: ${Math.round(pct * 100)}%  (${formatSize(e.loaded)} / ${formatSize(e.total)})`,
+          pct
+        );
+      }
+    });
+
+    xhr.upload.addEventListener('load', () => {
+      showProgress('[2/3] Извлечение аудио (ffmpeg)...', null);
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200) {
+        const blob = xhr.response; // arraybuffer → blob
+        const audioBlob = new Blob([blob], { type: 'audio/mpeg' });
+        showProgress(`[2/3] Аудио извлечено: ${formatSize(audioBlob.size)}`, 1);
+        resolve(audioBlob);
+      } else {
+        let msg = `Ошибка сервера: HTTP ${xhr.status}`;
+        try {
+          const text = new TextDecoder().decode(xhr.response);
+          const err = JSON.parse(text);
+          msg = err.error || msg;
+        } catch {}
+        reject(new Error(msg));
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Не удалось подключиться к серверу. Запущен ли server.py?'));
+    });
+
+    xhr.addEventListener('abort', () => reject(new Error('Отменено')));
+
+    xhr.open('POST', `${SERVER}/extract-audio`);
+    xhr.setRequestHeader('X-File-Extension', getExtension(file.name));
+    xhr.responseType = 'arraybuffer';
+    xhr.send(file);
+  });
+}
+
+// --- Deepgram via XHR (для прогресса upload) ---
+function sendToDeepgram(blob, mimeType, apiKey, lang, model, stepPrefix) {
+  return new Promise((resolve, reject) => {
+    const params = new URLSearchParams({
+      model, language: lang, smart_format: 'true', paragraphs: 'true',
+    });
+
+    const xhr = new XMLHttpRequest();
+    currentXHR = xhr;
+
+    xhr.upload.addEventListener('progress', e => {
+      if (e.lengthComputable) {
+        const pct = e.loaded / e.total;
+        showProgress(
+          `${stepPrefix} Отправка в Deepgram: ${Math.round(pct * 100)}%  (${formatSize(e.loaded)} / ${formatSize(e.total)})`,
+          pct
+        );
+      }
+    });
+
+    xhr.upload.addEventListener('load', () => {
+      showProgress(`${stepPrefix} Ожидание ответа от Deepgram...`, null);
+    });
+
+    xhr.addEventListener('load', () => {
+      currentXHR = null;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch { reject(new Error('Некорректный ответ от Deepgram')); }
+      } else {
+        let msg = `Ошибка HTTP ${xhr.status}`;
+        try {
+          const err = JSON.parse(xhr.responseText);
+          if (xhr.status === 401) msg = 'Неверный API ключ';
+          else if (xhr.status === 402) msg = 'Недостаточно кредитов на аккаунте Deepgram';
+          else if (xhr.status === 413) msg = 'Файл слишком большой';
+          else msg = err.err_msg || err.message || msg;
+        } catch {}
+        reject(new Error(msg));
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      currentXHR = null;
+      reject(new Error('Ошибка сети. Проверьте подключение к интернету'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      currentXHR = null;
+      reject(new Error('Отменено'));
+    });
+
+    xhr.open('POST', `https://api.deepgram.com/v1/listen?${params}`);
+    xhr.setRequestHeader('Authorization', `Token ${apiKey}`);
+    xhr.setRequestHeader('Content-Type', mimeType);
+    xhr.send(blob);
+  });
+}
+
+// --- Main ---
+async function startTranscription() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showError('Введите Deepgram API ключ'); return; }
+  if (!selectedFile) { showError('Выберите аудио или видео файл'); return; }
+
+  hideError();
+  isProcessing = true;
+  updateButton();
+  document.getElementById('resultArea').classList.remove('visible');
+
+  const lang = document.getElementById('lang').value;
+  const model = document.getElementById('model').value;
+  const isVideo = isVideoFile(selectedFile);
+
+  try {
+    let uploadBlob, mimeType, stepPrefix;
+
+    if (isVideo) {
+      // Видео → локальный сервер (ffmpeg) → mp3
+      showProgress(`[1/3] Отправка видео на обработку: 0%`, 0);
+      uploadBlob = await extractAudioViaServer(selectedFile);
+      mimeType = 'audio/mpeg';
+      stepPrefix = '[3/3]';
+    } else {
+      // Аудио → напрямую в Deepgram
+      uploadBlob = selectedFile;
+      mimeType = selectedFile.type || 'audio/mpeg';
+      stepPrefix = '[1/1]';
+    }
+
+    const result = await sendToDeepgram(uploadBlob, mimeType, apiKey, lang, model, stepPrefix);
+
+    // Собираем текст из параграфов (с разбивкой), fallback на plain transcript
+    const alt = result.results?.channels?.[0]?.alternatives?.[0];
+    const paragraphs = alt?.paragraphs?.paragraphs;
+    let transcript;
+    if (paragraphs && paragraphs.length) {
+      transcript = paragraphs.map(p =>
+        p.sentences.map(s => s.text).join(' ')
+      ).join('\n\n');
+    } else {
+      transcript = alt?.transcript || '';
+    }
+    const confidence = alt?.confidence;
+    const duration = result.metadata?.duration;
+    const channels = result.metadata?.channels;
+
+    resultTranscript = transcript;
+    document.getElementById('resultText').value = transcript || '(пустой транскрипт)';
+
+    const metaParts = [];
+    if (duration != null) {
+      const m = Math.floor(duration / 60);
+      const s = Math.round(duration % 60);
+      metaParts.push(`${m}:${String(s).padStart(2, '0')}`);
+    }
+    if (confidence != null) metaParts.push(`точность: ${Math.round(confidence * 100)}%`);
+    metaParts.push(`модель: ${model}`);
+    if (channels != null) metaParts.push(`каналов: ${channels}`);
+    if (isVideo) metaParts.push(`${formatSize(selectedFile.size)} → ${formatSize(uploadBlob.size)}`);
+    document.getElementById('resultMeta').textContent = metaParts.join(' · ');
+
+    document.getElementById('resultArea').classList.add('visible');
+    hideProgress();
+  } catch (e) {
+    hideProgress();
+    showError(e.message);
+  } finally {
+    isProcessing = false;
+    currentXHR = null;
+    updateButton();
+  }
+}
+
+// --- Result actions ---
+async function copyResult() {
+  try {
+    await navigator.clipboard.writeText(resultTranscript);
+    const btn = document.getElementById('btnCopy');
+    btn.textContent = 'Скопировано!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Копировать';
+      btn.classList.remove('copied');
+    }, 2000);
+  } catch {
+    const ta = document.getElementById('resultText');
+    ta.select();
+    document.execCommand('copy');
+  }
+}
+
+function downloadResult() {
+  const blob = new Blob([resultTranscript], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = originalFileName.replace(/\.[^.]+$/, '') + '_transcript.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('apiKey').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveApiKey();
+});
+document.getElementById('apiKey').addEventListener('input', updateButton);
+</script>
+</body>
+</html>
