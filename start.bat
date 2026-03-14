@@ -1,21 +1,20 @@
 @echo off
-chcp 65001 >nul 2>&1
 title Transgribator
 
 echo ============================================
-echo   Transgribator - Setup ^& Launch
+echo   Transgribator - Setup and Launch
 echo ============================================
 echo.
 
-:: --- Проверка Python ---
+:: --- Check Python ---
 where python >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [!] Python не найден.
+    echo [!] Python not found.
     echo.
-    echo     Скачай и установи Python:
+    echo     Download and install Python:
     echo     https://www.python.org/downloads/
     echo.
-    echo     ВАЖНО: при установке поставь галочку "Add Python to PATH"
+    echo     IMPORTANT: check "Add Python to PATH" during install
     echo.
     pause
     exit /b 1
@@ -24,10 +23,10 @@ if %errorlevel% neq 0 (
 for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYVER=%%i
 echo [OK] %PYVER%
 
-:: --- Проверка / установка ffmpeg ---
+:: --- Check / install ffmpeg ---
 where ffmpeg >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [..] ffmpeg не найден, скачиваю...
+    echo [..] ffmpeg not found, downloading...
     echo.
 
     set "FFMPEG_DIR=%~dp0ffmpeg"
@@ -36,58 +35,51 @@ if %errorlevel% neq 0 (
 
     if not exist "%FFMPEG_DIR%" mkdir "%FFMPEG_DIR%"
 
-    :: Скачиваем через PowerShell (есть везде на Win 10/11)
-    powershell -Command "Write-Host 'Downloading ffmpeg (~90 MB)...'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%FFMPEG_URL%' -OutFile '%FFMPEG_ZIP%'"
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Write-Host 'Downloading ffmpeg (~90 MB)...'; Invoke-WebRequest -Uri '%FFMPEG_URL%' -OutFile '%FFMPEG_ZIP%'"
 
     if not exist "%FFMPEG_ZIP%" (
-        echo [!] Не удалось скачать ffmpeg.
-        echo     Скачай вручную: https://ffmpeg.org/download.html
+        echo [!] Failed to download ffmpeg.
+        echo     Download manually: https://ffmpeg.org/download.html
         pause
         exit /b 1
     )
 
-    echo [..] Распаковка...
+    echo [..] Extracting...
     powershell -Command "Expand-Archive -Path '%FFMPEG_ZIP%' -DestinationPath '%FFMPEG_DIR%' -Force"
     del "%FFMPEG_ZIP%" 2>nul
 
-    :: Найти bin/ffmpeg.exe внутри распакованной папки
     for /r "%FFMPEG_DIR%" %%f in (ffmpeg.exe) do (
         set "FFMPEG_BIN_DIR=%%~dpf"
         goto :found_ffmpeg
     )
 
-    echo [!] ffmpeg.exe не найден в архиве.
+    echo [!] ffmpeg.exe not found in archive.
     pause
     exit /b 1
 
     :found_ffmpeg
-    :: Добавить в PATH для текущей сессии
     set "PATH=%FFMPEG_BIN_DIR%;%PATH%"
 
     where ffmpeg >nul 2>&1
     if %errorlevel% neq 0 (
-        echo [!] ffmpeg установлен, но не найден в PATH.
+        echo [!] ffmpeg extracted but not accessible.
         pause
         exit /b 1
     )
 
-    echo [OK] ffmpeg скачан и готов к работе
-    echo     Расположение: %FFMPEG_BIN_DIR%
+    echo [OK] ffmpeg downloaded: %FFMPEG_BIN_DIR%
     echo.
 ) else (
-    echo [OK] ffmpeg найден
+    echo [OK] ffmpeg found
 )
 
 echo.
 echo ============================================
-echo   Запуск сервера...
+echo   Starting server...
 echo   http://localhost:8765/transcriber.html
 echo ============================================
 echo.
 
-:: Открыть браузер
 start "" "http://localhost:8765/transcriber.html"
-
-:: Запустить сервер
 python "%~dp0server.py"
 pause
