@@ -16,7 +16,23 @@ import shutil
 import sys
 
 PORT = 8765
-FFMPEG = shutil.which("ffmpeg")
+
+def find_ffmpeg():
+    """Ищет ffmpeg: сначала в PATH, потом в локальной папке ffmpeg/ рядом с server.py."""
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    # Поиск в локальной папке (скачанной через start.bat)
+    local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg")
+    if os.path.isdir(local_dir):
+        for root, dirs, files in os.walk(local_dir):
+            if "ffmpeg.exe" in files:
+                return os.path.join(root, "ffmpeg.exe")
+            if "ffmpeg" in files:
+                return os.path.join(root, "ffmpeg")
+    return None
+
+FFMPEG = find_ffmpeg()
 
 class Handler(http.server.SimpleHTTPRequestHandler):
 
