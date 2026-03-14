@@ -1,10 +1,10 @@
 """
-Локальный сервер для транскрибера.
-- Раздаёт статику (transcriber.html)
-- POST /extract-audio — принимает видео, возвращает mp3 через ffmpeg
+Local server for Transgribator.
+- Serves static files (transcriber.html)
+- POST /extract-audio: accepts video, returns mp3 via ffmpeg
 
-Запуск: python server.py
-Откроется: http://localhost:8765
+Usage: python server.py
+Opens: http://localhost:8765
 """
 
 import http.server
@@ -17,12 +17,11 @@ import sys
 
 PORT = 8765
 
+
 def find_ffmpeg():
-    """Ищет ffmpeg: сначала в PATH, потом в локальной папке ffmpeg/ рядом с server.py."""
     found = shutil.which("ffmpeg")
     if found:
         return found
-    # Поиск в локальной папке (скачанной через start.bat)
     local_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg")
     if os.path.isdir(local_dir):
         for root, dirs, files in os.walk(local_dir):
@@ -32,7 +31,9 @@ def find_ffmpeg():
                 return os.path.join(root, "ffmpeg")
     return None
 
+
 FFMPEG = find_ffmpeg()
+
 
 class Handler(http.server.SimpleHTTPRequestHandler):
 
@@ -44,23 +45,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def handle_extract_audio(self):
         if not FFMPEG:
-            self.send_json(500, {"error": "ffmpeg не найден в PATH"})
+            self.send_json(500, {"error": "ffmpeg not found"})
             return
 
         content_length = int(self.headers.get("Content-Length", 0))
         if content_length == 0:
-            self.send_json(400, {"error": "Пустой запрос"})
+            self.send_json(400, {"error": "Empty request"})
             return
 
-        # Получаем расширение из заголовка
         ext = self.headers.get("X-File-Extension", ".mp4")
         if not ext.startswith("."):
             ext = "." + ext
 
         tmp_in = None
-        tmp_out = None
+        tmp_out_path = None
         try:
-            # Сохраняем входной файл
             tmp_in = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
             remaining = content_length
             while remaining > 0:
@@ -71,10 +70,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 remaining -= len(chunk)
             tmp_in.close()
 
-            # Выходной файл
             tmp_out_path = tmp_in.name + ".mp3"
 
-            # ffmpeg: извлечь аудио, mono, 16kHz, 64k — оптимально для STT
             cmd = [
                 FFMPEG, "-y",
                 "-i", tmp_in.name,
@@ -90,19 +87,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=600  # 10 минут макс
+                timeout=600
             )
 
             if result.returncode != 0:
                 err_msg = result.stderr[-500:] if result.stderr else "Unknown error"
-                self.send_json(500, {"error": f"ffmpeg ошибка: {err_msg}"})
+                self.send_json(500, {"error": f"ffmpeg error: {err_msg}"})
                 return
 
             if not os.path.exists(tmp_out_path):
-                self.send_json(500, {"error": "ffmpeg не создал выходной файл"})
+                self.send_json(500, {"error": "ffmpeg produced no output"})
                 return
 
-            # Отправляем mp3
             file_size = os.path.getsize(tmp_out_path)
             self.send_response(200)
             self.send_header("Content-Type", "audio/mpeg")
@@ -118,11 +114,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self.wfile.write(chunk)
 
         except subprocess.TimeoutExpired:
-            self.send_json(500, {"error": "ffmpeg таймаут (>10 мин)"})
+            self.send_json(500, {"error": "ffmpeg timeout (>10 min)"})
         except Exception as e:
             self.send_json(500, {"error": str(e)})
         finally:
-            # Чистим tmp файлы
             if tmp_in and os.path.exists(tmp_in.name):
                 os.unlink(tmp_in.name)
             if tmp_out_path and os.path.exists(tmp_out_path):
@@ -156,11 +151,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     print(f"ffmpeg: {FFMPEG}")
-    print(f"Сервер: http://localhost:{PORT}")
-    print(f"Открой: http://localhost:{PORT}/transcriber.html")
-    print("Ctrl+C для остановки\n")
+    print(f"Server: http://localhost:{PORT}")
+    print(f"Open:   http://localhost:{PORT}/transcriber.html")
+    print("Ctrl+C to stop\n")
     server = http.server.HTTPServer(("", PORT), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nОстановлен.")
+        print("\nStopped.")

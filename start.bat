@@ -80,6 +80,9 @@ echo   http://localhost:8765/transcriber.html
 echo ============================================
 echo.
 
-start "" "http://localhost:8765/transcriber.html"
+:: Open browser after 2 sec delay (gives server time to start)
+start "" cmd /c "ping -n 3 127.0.0.1 >nul && start http://localhost:8765/transcriber.html"
+
+:: Run server (blocks until Ctrl+C)
 python "%~dp0server.py"
 pause
